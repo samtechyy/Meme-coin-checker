@@ -1,22 +1,94 @@
-<script>
-  fetch('/api/data')
-    .then(r => r.json())
-    .then(rows => {
-      const tbody = document.getElementById('body');
-      const note  = document.getElementById('note');
-      rows.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.date_utc}</td>
-          <td>$${Number(r.volume_usd).toLocaleString()}</td>
-          <td>V4 $${Number(r.v4_volume_usd || 0).toLocaleString()} · V3 $${Number(r.v3_volume_usd || 0).toLocaleString()}</td>
-          <td>${(r.v4_swap_count || 0) + (r.v3_swap_count || 0)}</td>`;
-        tbody.appendChild(tr);
-        if (r.note) note.textContent = r.note;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elysium Memecoin Volume</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #111; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.3rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e5e5; }
+    th { background: #f8f8f8; font-weight: 600; }
+    .note { margin-top: 1.5rem; font-size: 0.9rem; color: #555; }
+    .error { color: #c00; }
+    .loading { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Elysium Memecoin Daily Volume</h1>
+  <p>Previous UTC day · Official Uniswap V4 + V3</p>
+
+  <div id="status" class="loading">Loading data…</div>
+
+  <table id="table" style="display:none">
+    <thead>
+      <tr>
+        <th>Date (UTC)</th>
+        <th>Total Volume</th>
+        <th>V4 / V3 split</th>
+        <th>Swaps</th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
+
+  <p class="note" id="note"></p>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const tableEl  = document.getElementById('table');
+    const bodyEl   = document.getElementById('body');
+    const noteEl   = document.getElementById('note');
+
+    fetch('/api/data')
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(rows => {
+        statusEl.style.display = 'none';
+        tableEl.style.display = 'table';
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+          bodyEl.innerHTML = '<tr><td colspan="4">No data yet</td></tr>';
+          noteEl.textContent = 'Open /api/run in a new tab, wait for it to finish, then refresh this page.';
+          return;
+        }
+
+        const r = rows[0];
+
+        // If still the placeholder
+        if (r.date_utc === 'no-data-yet') {
+          bodyEl.innerHTML = `
+            <tr>
+              <td colspan="4" style="color:#c00">
+                No volume data yet.<br>
+                Open <a href="/api/run" target="_blank">/api/run</a> and wait until it returns JSON, then refresh this page.
+              </td>
+            </tr>`;
+          noteEl.textContent = r.note || '';
+          return;
+        }
+
+        bodyEl.innerHTML = `
+          <tr>
+            <td>${r.date_utc}</td>
+            <td><strong>$${Number(r.volume_usd || 0).toLocaleString()}</strong></td>
+            <td>
+              V4 $${Number(r.v4_volume_usd || 0).toLocaleString()}<br>
+              V3 $${Number(r.v3_volume_usd || 0).toLocaleString()}
+            </td>
+            <td>${(r.v4_swap_count || 0) + (r.v3_swap_count || 0)}</td>
+          </tr>`;
+
+        if (r.note) noteEl.textContent = r.note;
+      })
+      .catch(err => {
+        statusEl.className = 'error';
+        statusEl.textContent = 'Failed to load: ' + err.message;
+        noteEl.textContent = 'Check /api/data and /api/run in new tabs.';
       });
-    })
-    .catch(() => {
-      document.getElementById('note').textContent =
-        'No data yet. Hit /api/run or wait for the daily cron.';
-    });
-</script>
+  </script>
+</body>
+</html>
