@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elysium Memecoin Daily Volume</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #111; }
+    h1 { font-size: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e5e5; }
+    th { background: #f8f8f8; font-weight: 600; }
+    .note { margin-top: 1.5rem; font-size: 0.9rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Elysium Memecoin Daily Volume</h1>
+  <p>Previous UTC day · Official Uniswap V4 PoolManager only</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Date (UTC)</th>
+        <th>Volume (USD)</th>
+        <th>Swaps</th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
+  <p class="note" id="note"></p>
+  <script>
+    fetch('/api/data')
+      .then(r => r.json())
+      .then(rows => {
+        const tbody = document.getElementById('body');
+        const note = document.getElementById('note');
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.date_utc}</td>
+            <td>$${Number(r.volume_usd).toLocaleString()}</td>
+            <td>${r.swap_count ?? '—'}</td>`;
+          tbody.appendChild(tr);
+          if (r.note) note.textContent = r.note;
+        });
+      })
+      .catch(e => {
+        document.getElementById('note').textContent = 'No data yet. Trigger /api/run or wait for the daily cron.';
+      });
+  </script>
+</body>
+</html>
